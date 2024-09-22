@@ -1,0 +1,119 @@
+
+1
+CT313H: WEB TECHNOLOGIES AND 
+SERVICES
+ 
+Building ContactBook App - Backend - Part 2  
+You will build a contact management app as a SPA app. The tech stack includes Nodejs/Express, 
+Knex.js, MySQL/MariaDB for the backend (API server), and Vue.js for the frontend (GUI). In the first 
+two lab sessions, you will build the API server for the app.
+The API server must support the following requests:
+POST /api/contacts: creates a new contact
+GET /api/contacts: returns all contacts from the database. This endpoint supports the 
+following optional parameters:
+favorite and name are for querying favorite contacts and contacts filtered by name. For 
+example, GET /api/contacts?favorite&name=duy returns favorite contacts named "duy"
+page and limit are for pagination
+DELETE /api/contacts: deletes all contacts in the database
+GET /api/contacts/<contact-id>: gets a contact with a specific ID
+PUT /api/contacts/<contact-id>: updates a contact with a specific ID
+DELETE /api/contacts/<contact-id>: deletes a contact with a specific ID
+All requests for undefined URLs will result in a 404 error with the message "Resource not 
+found"
+A contact has the following information: name (string), email (string), address (string), phone (string), 
+favorite (boolean), and avatar (string). The data format used for client-server communication is 
+either JSON or multipart/form-data. The OpenAPI spec (Swagger) is used to document our API. 
+The source code is managed by git and uploaded to GitHub.
+This step-by-step guide will help implement all the above requirements. However, students are 
+free to make their own implementation as long as the requirements are met.
+Requirements for the lab report:
+The submitted report is a PDF file containing images showing the results of your works (e.g., 
+images showing the implemented features, successful and failed scenarios, results of the 
+operations, ...).  You should NOT screenshot the source code.
+You only need to create ONE report for the whole four lab sessions. At the end of each 
+lab session, students need to (1) submit the work-in-progress report and (2) push the code to 
+the GitHub repository given by the instructor.
+The report should also filled with student information (student ID, student name, class ID) 
+and the links to the GitHub repositories.
+Plagiarism will result in 0.
+(Continue from the result of Part 1)
+Step 1: Prepare database  
+Install MySQL or MariaDB on your machine if needed.
+Use a MySQL client (phpMyAdmin, HeidiSQL, ...) to create a database named ct313h_labs. 
+Next, create a contacts table as follows (you can also leverage knex migration for this task):
+Install knex , mysql  and faker-js  (checkout fake-js API here): 
+Edit .env and add the database connection parameters:
+Make sure to update the above parameters (user/password) according to your database 
+setup.
+In the project directory, create directory seeds and run npx knex init  to create knexfile.js 
+file. Edit knexfile.js as follows:
+CREATE TABLE `contacts` (
+    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(255) DEFAULT NULL,
+    `address` VARCHAR(255) DEFAULT NULL,
+    `phone` VARCHAR(15) DEFAULT NULL,
+    `favorite` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+    `avatar` VARCHAR(255) DEFAULT NULL,
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+npm install knex mysql
+npm install @faker-js/faker --save-dev
+PORT=3000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=root
+DB_NAME=ct313h_labs
+require('dotenv').config();
+const { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME } = process.env;
+/**
+ * @type { import("knex").Knex.Config }
+ */
+module.exports = {
+    client: 'mysql',
+    connection: {
+        host: DB_HOST,
+        port: DB_PORT,
+        user: DB_USER,
+        password: DB_PASS,
+        database: DB_NAME,
+    },
+Run npx knex seed:make contacts_seed  to create a seeding script for the contacts table 
+(./seeds/contacts_seed.js). Edit the seeding script as follows:
+Run the seeding scripts in the seeds directory by the command: npx knex seed:run .
+Verify that fake data are inserted into the database.
+After verification, commit changes to git:
+Step 2: Implement route handlers  
+Define a module that creates a knex object representing the connection to the database in 
+src/database/knex.js:
+    pool: { min: 0, max: 10 },
+    seeds: {
+        directory: './seeds',
+    },
+};
+const { faker } = require('@faker-js/faker');
+function createContact() {
+    return {
+        name: faker.person.fullName(),
+        email: faker.internet.email(),
+        address: faker.location.streetAddress(),
+        phone: faker.string.numeric('09########'),
+        favorite: faker.number.int({
+            min: 0,
+            max: 1,
+        }),
+        avatar: '/public/images/blank-profile-picture.png',
+    };
+}
+/**
+ * @param { import("knex").Knex } knex
+ * @returns { Promise<void> }
+ */
+exports.seed = async function (knex) {
+    await knex('contacts').del();
+    await knex('contacts').insert(Array(100).fill().map(createContact));
+};
+git add -u
+git add seeds knexfile.js
+git commit -m "Setup knex.js and insert fake data"
