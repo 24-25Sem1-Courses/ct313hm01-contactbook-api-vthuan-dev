@@ -23,41 +23,46 @@ async function createContact(payload) {
     const [id] = await contactRepository().insert(contact);
     return { id, ...contact };
     }
-
-
-async function getManyContacts(query) {
-    const {name, favorite, page = 1, limit = 5} = query;
-    const paginator = new Paginator(page, limit);
-    let result = await contactRepository()
-    .where((builder) => {
-        if (name) {
-            builder.where('name', 'like', `%${name}%`);
+    async function getManyContacts(query) {
+        const { name, favorite, page = 1, limit = 5 } = query;
+        const paginator = new Paginator(page, limit);
+    
+        try {
+            // Query contacts
+            let dbQuery = contactRepository();
+    
+            // Apply filters
+            if (name) {
+                dbQuery = dbQuery.where('name', 'like', `%${name}%`);
+            }
+            if (favorite !== undefined && favorite !== '0' && favorite !== 'false') {
+                dbQuery = dbQuery.where('favorite', favorite);
+            }
+    
+            // Get total count
+            const [{ count }] = await dbQuery.clone().count('* as count');
+            
+            // Get paginated results
+            const contacts = await dbQuery
+                .select('id', 'name', 'email', 'address', 'phone', 'favorite', 'avatar')
+                .limit(paginator.limit)
+                .offset(paginator.offset);
+    
+            console.log('Query results:', {
+                totalCount: count,
+                contactsFound: contacts.length
+            });
+    
+            return {
+                contacts,
+                metadata: paginator.getMetadata(parseInt(count))
+            };
+    
+        } catch (error) {
+            console.error('Error in getManyContacts:', error);
+            throw error;
         }
-        if (favorite !== undefined && favorite !== '0'&& favorite !== 'false') {
-            builder.where('favorite', favorite);
-        }
-    })
-    .select(
-        knex.raw('count(id) OVER() as recordCount'),
-        'id',
-        'name',
-        'email',
-        'address',
-        'phone',
-        'favorite',
-        'avatar'
-    )
-    .limit(paginator.limit).offset(paginator.offset);
-    let totalRecords = 0;
-    result = result.map((contact) => {
-        totalRecords = contact.recordCount;
-        delete contact.recordCount;
-        return result;
-    });
-    const metadata = paginator.getMetadata(totalRecords);
-    return { metadata, result };
-};
-
+    }
 async function getContactById(id) {
     return contactRepository().where('id', id).first();
 }

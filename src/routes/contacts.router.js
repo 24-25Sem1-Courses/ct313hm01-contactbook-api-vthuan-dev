@@ -326,5 +326,8 @@ module.exports.setup = (app) => {
      *               $ref: '#/components/schemas/Error'
      */
     router.delete('/:id', contactsController.deleteContact);
+
+    
+
     router.all('/:id', methodNotAllowed); // Apply methodNotAllowed middleware here
 };

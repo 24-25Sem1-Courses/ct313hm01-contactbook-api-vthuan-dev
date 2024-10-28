@@ -31,33 +31,43 @@ async function createContact(req, res, next) {
 }
 
 async function getContactsByFilter(req, res, next) {
-    let result = {
-        contacts: [],
-        metadata: {
-            totalRecords: 0,
-            firstPage: 1,
-            lastPage: 1,
-            page: 1,
-            limit: 5,
-        },
-    };
-
     try {
-        result = await contactsService.getManyContacts(req.query);
+        console.log('Incoming request query:', req.query);
+        
+        const result = await contactsService.getManyContacts(req.query);
+        
+        console.log('Service response:', {
+            contactCount: result.contacts.length,
+            metadata: result.metadata
+        });
+
+        if (!result.contacts) {
+            result.contacts = [];
+        }
+
+        if (!result.metadata) {
+            result.metadata = {
+                totalRecords: 0,
+                firstPage: 1,
+                lastPage: 1,
+                page: 1,
+                limit: 5
+            };
+        }
+
+        return res.json(
+            Jsend.success({
+                contacts: result.contacts,
+                metadata: result.metadata
+            })
+        );
+
     } catch (error) {
-        console.log(error);
+        console.error('Controller error:', error);
         return next(
             new ApiError(500, 'An error occurred while retrieving contacts')
         );
     }
-
-    return res.json(
-        Jsend.success({
-            contacts: result.contacts,
-            metadata: result.metadata,
-        })
-    );
-
 }
 async function getContactById(req, res, next) {
     const { id } = req.params;
@@ -125,11 +135,6 @@ async function deleteContact(req, res, next) {
     }
 }
 
-function deleteContact(req, res) {
-    return res.json(Jsend.success({
-        message: 'Contact deleted',
-    }));
-}
 
 async function deleteAllContacts(req, res, next) {
     try {
