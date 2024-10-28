@@ -66,36 +66,59 @@ async function createContact(payload) {
 async function getContactById(id) {
     return contactRepository().where('id', id).first();
 }
-
 async function updateContact(id, payload) {
-    const updatedContact = await contactRepository()
-        .where('id', id)
-        .select('*')
-        .first();
+    try {
+        // Lấy contact hiện tại
+        const currentContact = await contactRepository()
+            .where('id', id)
+            .first();
 
-    if (!updatedContact) {
-        return null;
+        if (!currentContact) {
+            return null;
+        }
+
+        // Chuẩn bị dữ liệu cập nhật
+        const update = {
+            name: payload.name || currentContact.name,
+            email: payload.email || currentContact.email,
+            address: payload.address || currentContact.address,
+            phone: payload.phone || currentContact.phone,
+            favorite: payload.favorite !== undefined ? payload.favorite : currentContact.favorite,
+        };
+
+        // Chỉ cập nhật avatar nếu có avatar mới
+        if (payload.avatar) {
+            update.avatar = payload.avatar;
+
+            // Xóa avatar cũ nếu tồn tại và khác avatar mới
+            if (
+                currentContact.avatar &&
+                currentContact.avatar !== payload.avatar &&
+                currentContact.avatar.startsWith('/public/uploads')
+            ) {
+                const oldAvatarPath = path.join(__dirname, '..', '..', currentContact.avatar);
+                fs.unlink(oldAvatarPath, (err) => {
+                    if (err) console.error('Error deleting old avatar:', err);
+                });
+            }
+        }
+
+        // Thực hiện cập nhật
+        await contactRepository()
+            .where('id', id)
+            .update(update);
+
+        // Lấy contact đã cập nhật
+        const updatedContact = await contactRepository()
+            .where('id', id)
+            .first();
+
+        return updatedContact;
+    } catch (error) {
+        console.error('Error in updateContact:', error);
+        throw error;
     }
-
-    const update = readContact(payload);
-    if (!update.avatar) {
-        delete update.avatar;
-    }
-
-    await contactRepository().where('id', id).update(update);
-
-    if (
-        update.avatar &&
-        updatedContact.avatar &&
-        update.avatar !== updatedContact.avatar &&
-        updatedContact.avatar.startsWith('/public/uploads')
-    ) {
-        unlink(`${updatedContact.avatar}`, (err) => {});
-    }
-
-    return { ...updatedContact, ...update };
 }
-
 async function deleteContact(id) {
     const deletedContact = await contactRepository()
         .where('id', id)

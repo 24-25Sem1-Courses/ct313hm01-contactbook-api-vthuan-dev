@@ -95,27 +95,43 @@ async function getContact(req, res, next) {
     }
 }
 async function updateContact(req, res, next) {
-    if (Object.keys(req.body).length === 0 && !req.file) {
-        return next(new ApiError(400, 'Data to update can not be empty'));
-    }
-
-    const { id } = req.params;
-
     try {
-        const updated = await contactsService.updateContact(id, {
-            ...req.body,
-            avatar: req.file ? `/public/uploads/${req.file.filename}` : null,
+        if (Object.keys(req.body).length === 0 && !req.file) {
+            return next(new ApiError(400, 'Data to update can not be empty'));
+        }
+
+        const { id } = req.params;
+
+        // Log để debug
+        console.log('Update request:', {
+            id,
+            body: req.body,
+            file: req.file
         });
+
+        // Chuẩn bị dữ liệu cập nhật
+        const updateData = {
+            name: req.body.name,
+            email: req.body.email,
+            address: req.body.address,
+            phone: req.body.phone,
+            favorite: req.body.favorite === 'true',
+        };
+
+        // Chỉ thêm avatar nếu có file mới
+        if (req.file) {
+            updateData.avatar = `/public/uploads/${req.file.filename}`;
+        }
+
+        const updated = await contactsService.updateContact(id, updateData);
+        
         if (!updated) {
             return next(new ApiError(404, 'Contact not found'));
         }
-        return res.json(
-            Jsend.success({
-                contact: updated,
-            })
-        );
+
+        return res.json(Jsend.success({ contact: updated }));
     } catch (error) {
-        console.log(error);
+        console.error('Error in updateContact:', error);
         return next(new ApiError(500, `Error updating contact with id=${id}`));
     }
 }
