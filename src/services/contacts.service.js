@@ -66,6 +66,7 @@ async function createContact(payload) {
 async function getContactById(id) {
     return contactRepository().where('id', id).first();
 }
+
 async function updateContact(id, payload) {
     try {
         // Lấy contact hiện tại
@@ -119,6 +120,7 @@ async function updateContact(id, payload) {
         throw error;
     }
 }
+
 async function deleteContact(id) {
     const deletedContact = await contactRepository()
         .where('id', id)
